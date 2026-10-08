@@ -1,0 +1,20 @@
+# Local hooks only: they use the tools already in the conda environment.
+#   pip install pre-commit && pre-commit install
+repos:
+  - repo: local
+    hooks:
+      - id: guard-data-files
+        name: refuse data files, notebooks and large files
+        entry: python scripts/guard_data_files.py
+        language: system
+        pass_filenames: true
+      - id: ruff-check
+        name: ruff check
+        entry: ruff check
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff format --check
+        entry: ruff format --check
+        language: system
+        types: [python]

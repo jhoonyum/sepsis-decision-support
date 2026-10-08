@@ -1,0 +1,80 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below, and cite MIMIC-IV as PhysioNet asks."
+title: "Sepsis Decision Support: calibrated ICU deterioration risk with an honest decision screen"
+type: software
+authors:
+  - given-names: Hoon
+    alias: jhoonyum
+repository-code: "https://github.com/jhoonyum/sepsis-decision-support"
+license: MIT
+version: 0.1.0.dev0
+keywords:
+  - sepsis
+  - MIMIC-IV
+  - clinical prediction model
+  - calibration
+  - clinical decision support
+references:
+  - type: dataset
+    title: "MIMIC-IV (version 3.1)"
+    authors:
+      - family-names: Johnson
+        given-names: Alistair
+      - family-names: Bulgarelli
+        given-names: Lucas
+      - family-names: Pollard
+        given-names: Tom
+      - family-names: Gow
+        given-names: Brian
+      - family-names: Moody
+        given-names: Benjamin
+      - family-names: Horng
+        given-names: Steven
+      - family-names: Celi
+        given-names: Leo Anthony
+      - family-names: Mark
+        given-names: Roger
+    year: 2024
+    publisher:
+      name: PhysioNet
+    doi: 10.13026/kpb9-mt58
+  - type: article
+    title: "MIMIC-IV, a freely accessible electronic health record dataset"
+    authors:
+      - family-names: Johnson
+        given-names: Alistair E. W.
+      - family-names: Bulgarelli
+        given-names: Lucas
+      - family-names: Shen
+        given-names: Lu
+      - name: "et al."
+    journal: "Scientific Data"
+    volume: 10
+    start: 1
+    year: 2023
+    doi: 10.1038/s41597-022-01899-x
+  - type: dataset
+    title: "MIMIC-IV Clinical Database Demo (version 2.2)"
+    authors:
+      - family-names: Johnson
+        given-names: Alistair
+      - family-names: Bulgarelli
+        given-names: Lucas
+      - family-names: Pollard
+        given-names: Tom
+      - family-names: Horng
+        given-names: Steven
+      - family-names: Celi
+        given-names: Leo Anthony
+      - family-names: Mark
+        given-names: Roger
+    year: 2023
+    publisher:
+      name: PhysioNet
+    doi: 10.13026/dp1f-ex47
+  - type: software
+    title: "mimic-code"
+    authors:
+      - name: "MIT Laboratory for Computational Physiology"
+    repository-code: "https://github.com/MIT-LCP/mimic-code"
+    commit: 303d26c

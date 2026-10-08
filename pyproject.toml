@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sepsis-decision-support"
+version = "0.1.0.dev0"
+description = "Calibrated ICU sepsis deterioration risk with an honest decision-support screen, built on MIMIC-IV."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12,<3.13"
+authors = [{ name = "Hoon" }]
+# Exact versions live in requirements-lock.txt (the environment used for every reported number).
+# The ranges here only say what the code needs.
+dependencies = [
+    "duckdb>=1.4",
+    "jax>=0.11",
+    "jaxlib>=0.11",
+    "matplotlib>=3.9",
+    "numpy>=2.0",
+    "numpyro>=0.22",
+    "pandas>=3.0",
+    "pyarrow>=20",
+    "pydantic>=2.10",
+    "pyyaml>=6.0",
+    "scikit-learn>=1.6",
+    "scipy>=1.14",
+    "typer>=0.15",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.15"]
+
+[project.scripts]
+sepsis-support = "sepsis_decision_support.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sepsis_decision_support = ["data/sql/*.sql"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "SIM"]
+# Line length is left to `ruff format`; long string literals (sentences, URLs) stay whole.
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["demo: needs the open MIMIC-IV demo database (set MIMIC_DEMO_DUCKDB)"]

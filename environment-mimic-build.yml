@@ -1,0 +1,17 @@
+# Optional minimal environment for downloading MIMIC-IV and building its DuckDB file with
+# mimic-code. environment.yml contains the same tools, so this one is only needed when the
+# build should run apart from the analysis environment.
+#
+#   mamba env create -f environment-mimic-build.yml
+#   conda activate mimic_build
+#
+# The DuckDB CLI is pinned to the 1.4 LTS line that mimic-code builds with. The analysis
+# itself reads the finished file with the Python duckdb package (environment.yml).
+name: mimic_build
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - duckdb-cli=1.4.4
+  - wget
+  - git

@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  checks:
+    name: Guard, lint and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install pinned packages
+        run: |
+          python -m pip install -r requirements-lock.txt
+          python -m pip install -e . --no-deps
+      - name: Refuse data files, notebooks and large files
+        run: python scripts/guard_data_files.py $(git ls-files)
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Unit tests
+        run: pytest
+
+  mimic-demo:
+    name: SQL on the open MIMIC-IV demo
+    runs-on: ubuntu-latest
+    env:
+      DEMO_DIR: ${{ github.workspace }}/.mimic-iv-demo
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install pinned packages
+        run: |
+          python -m pip install -r requirements-lock.txt
+          python -m pip install -e . --no-deps
+      - name: Install the DuckDB CLI used by mimic-code
+        run: |
+          curl -sSL -o duckdb_cli.zip https://github.com/duckdb/duckdb/releases/download/v1.4.4/duckdb_cli-linux-amd64.zip
+          unzip -q duckdb_cli.zip -d "$HOME/.local/bin"
+          rm duckdb_cli.zip
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Restore the demo database
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.DEMO_DIR }}
+          key: mimic-iv-demo-2.2-mimic-code-303d26c-duckdb-1.4.4
+      - name: Download and build the demo (skipped when cached)
+        run: scripts/build_mimic_demo.sh "$DEMO_DIR"
+      - name: Extract and validate the canonical tables
+        run: sepsis-support extract-check --duckdb "$DEMO_DIR/mimic4_demo.db"
+      - name: SQL tests
+        run: MIMIC_DEMO_DUCKDB="$DEMO_DIR/mimic4_demo.db" pytest -m demo
+
+  screen:
+    name: Drive the decision-support screen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Playwright
+        run: |
+          python -m pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Check every control against the screen data
+        run: python scripts/check_screen.py

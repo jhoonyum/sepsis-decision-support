@@ -1,0 +1,21 @@
+# Analysis environment (Miniforge / conda-forge only).
+#
+#   mamba env create -f environment.yml
+#   conda activate sepsis_hmm
+#   make setup          # exact package versions from requirements-lock.txt, then this package
+#
+# Conda supplies Python and the command-line tools (including the DuckDB CLI that
+# mimic-code builds with, so `make demo-data demo-check` works in this one environment);
+# pip installs the pinned Python packages, so the same versions are used on macOS (arm64)
+# and in CI (Linux).
+name: sepsis_hmm
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.12
+  - pip
+  - make
+  - git
+  - wget
+  - duckdb-cli=1.4.4

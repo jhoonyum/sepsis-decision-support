@@ -1,0 +1,91 @@
+# Default settings for every pipeline step.
+# Any value here can be overridden by a second YAML file passed with --config.
+# Units are part of every name so that nobody has to guess (hours, mmHg, mmol/L).
+
+seed: 20261008
+
+data:
+  # "synthetic": generated patients, no credentials needed.
+  # "mimic_duckdb": a DuckDB file built by mimic-code (MIMIC-IV full or the open demo).
+  source: synthetic
+  duckdb_path: null
+  synthetic:
+    number_of_stays: 2000
+
+runs:
+  # Patient-level intermediate files are written here, never inside the repository.
+  directory: ~/sepsis_runs
+
+cohort:
+  name: sepsis3_early
+  minimum_age_years: 18
+  first_icu_stay_only: true
+  # Sepsis must be recognised within this many hours of ICU admission (cohort "F-prime").
+  maximum_hours_from_icu_admission_to_recognition: 24
+  # Cardiac and thoracic surgery services: post-operative antibiotic prophylaxis is common there.
+  excluded_hospital_services: [CSURG, TSURG]
+  # Decision times are only made up to this many hours after time zero (every landmark hour
+  # below is within it). Outcome windows are not cut: 28-day death uses complete records.
+  administrative_censoring_hours: 240
+
+landmarks:
+  # Decision times, in hours after time zero, used to train the landmark model.
+  # Every reporting hour is also a training hour.
+  training_hours: [0, 3, 6, 9, 12, 15, 18, 21, 24, 30, 36, 42, 48, 60, 72]
+  # Decision times shown in the main results tables.
+  reporting_hours: [0, 6, 12, 24, 48]
+  # The alert-burden evaluation scores every patient every hour up to this point.
+  alert_scoring_maximum_hours: 72
+
+outcomes:
+  horizon_hours: 24
+  sustained_hypotension:
+    map_threshold_mmhg: 65
+    minimum_duration_minutes: 30
+    # Two low readings further apart than this do not form one episode: pressure may have
+    # recovered in between without being charted.
+    maximum_gap_between_readings_minutes: 120
+    plausible_map_range_mmhg: [20, 200]
+  lactate:
+    threshold_mmol_per_l: 2.0
+    window_hours_before: 6
+    window_hours_after: 6
+  mortality_days: 28
+
+features:
+  variables:
+    - heart_rate
+    - mean_arterial_pressure
+    - systolic_blood_pressure
+    - respiratory_rate
+    - spo2
+    - temperature
+    - lactate
+    - creatinine
+    - platelets
+    - bilirubin
+    - white_blood_cells
+    - gcs_total
+  change_window_hours: 6
+  count_window_hours: 24
+
+model:
+  landmark_logistic:
+    inverse_regularization_grid: [0.003, 0.01, 0.03, 0.1, 0.3, 1.0]
+    inner_folds: 3
+    bootstrap_replicates: 50
+
+evaluation:
+  folds: 5
+  # Most recent era in MIMIC-IV. Synthetic data uses the same labels.
+  temporal_holdout_era: "2020 - 2022"
+  bootstrap_replicates: 200
+  alert_thresholds: [0.10, 0.20, 0.30, 0.40, 0.50]
+  decision_curve_thresholds: [0.02, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50]
+  calibration_bins: 10
+  # Fixed risk bands for the screen's "of patients given about this risk, how many progressed".
+  calibration_band_edges: [0.0, 0.05, 0.10, 0.15, 0.20, 0.30, 0.40, 0.50, 0.70, 1.0]
+
+privacy:
+  # Counts below this, and rates that would let a reader back-calculate such a count, are suppressed.
+  minimum_cell_size: 11

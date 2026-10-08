@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv*/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Data and run outputs never enter the repository (docs/data_governance.md).
+# scripts/guard_data_files.py enforces the same rule in pre-commit and CI.
+/runs/
+/data/
+/data_cache/
+/physionet/
+*.csv
+*.csv.gz
+*.parquet
+*.feather
+*.db
+*.duckdb
+*.duckdb.wal
+*.sqlite
+*.npy
+*.npz
+*.pkl
+*.pickle
+*.gz
+*.h5
+*.hdf5
+*.xlsx
+*.xls
+*.rds
+*.sav
+*.dta
+*.ipynb
+.ipynb_checkpoints/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
