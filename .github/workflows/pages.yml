@@ -1,12 +1,10 @@
 # Publishes web/ (the decision-support screen and its synthetic-patient data) to GitHub Pages.
-# Needs Settings -> Pages -> Source: "GitHub Actions" once. Skipped while the repository is
-# private, so the screen goes public together with the repository, after the release check.
+# Started by hand (Actions -> Screen on GitHub Pages -> Run workflow) after the release check;
+# needs Settings -> Pages -> Source: "GitHub Actions" once. Never runs while the repository is
+# private. After the v0.1 release, a push trigger on web/** can be added back.
 name: Screen on GitHub Pages
 
 on:
-  push:
-    branches: [main]
-    paths: ["web/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
