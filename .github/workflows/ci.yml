@@ -55,6 +55,7 @@ jobs:
       - name: Install the DuckDB CLI used by mimic-code
         run: |
           curl -sSL -o duckdb_cli.zip https://github.com/duckdb/duckdb/releases/download/v1.4.4/duckdb_cli-linux-amd64.zip
+          mkdir -p "$HOME/.local/bin"
           unzip -q duckdb_cli.zip -d "$HOME/.local/bin"
           rm duckdb_cli.zip
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
