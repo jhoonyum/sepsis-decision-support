@@ -1,10 +1,13 @@
-# Publishes web/ (the decision-support screen and its synthetic-patient data) to GitHub Pages.
-# Started by hand (Actions -> Screen on GitHub Pages -> Run workflow) after the release check;
-# needs Settings -> Pages -> Source: "GitHub Actions" once. Never runs while the repository is
-# private. After the v0.1 release, a push trigger on web/** can be added back.
+# Publishes web/ (the decision-support screen and its synthetic-patient data) to GitHub Pages
+# whenever web/ changes on main, or when started by hand from the Actions tab.
+# Needs Settings -> Pages -> Source: "GitHub Actions" (set once). Skipped if the repository
+# is ever made private.
 name: Screen on GitHub Pages
 
 on:
+  push:
+    branches: [main]
+    paths: ["web/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -20,6 +23,8 @@ jobs:
   deploy:
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-24.04
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -31,3 +36,20 @@ jobs:
           path: web
       - id: deployment
         uses: actions/deploy-pages@v5
+
+  verify:
+    name: Drive every control on the published screen
+    needs: deploy
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install Playwright
+        run: |
+          python -m pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Check the published site against the committed screen data
+        run: python scripts/check_screen.py --url "${{ needs.deploy.outputs.page_url }}"
+

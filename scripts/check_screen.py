@@ -1,6 +1,6 @@
 """Drive every control of the decision-support screen and compare it with its data.
 
-    python scripts/check_screen.py [--data web/data/screen_data.json]
+    python scripts/check_screen.py [--data web/data/screen_data.json] [--url DEPLOYED_SITE]
 
 The script serves web/ on a free local port, opens it in headless Chromium (Playwright)
 and, for every synthetic patient:
@@ -25,12 +25,14 @@ from __future__ import annotations
 
 import argparse
 import functools
+import hashlib
 import http.server
 import json
 import math
 import re
 import socketserver
 import threading
+import urllib.request
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -196,12 +198,28 @@ def check_patient(page, checks: Checks, index: int, patient: dict) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--data", type=Path, default=REPOSITORY_ROOT / "web/data/screen_data.json")
+    parser.add_argument(
+        "--url",
+        help="check a deployed copy (for example the GitHub Pages site) instead of web/ served locally",
+    )
     arguments = parser.parse_args()
     data = json.loads(arguments.data.read_text(encoding="utf-8"))
     checks = Checks()
     console_errors: list[str] = []
 
-    server, url = serve(REPOSITORY_ROOT / "web")
+    if arguments.url:
+        server = None
+        url = arguments.url if arguments.url.endswith("/") else arguments.url + "/"
+        # The deployed data must be the same file as the one the checks read.
+        with urllib.request.urlopen(url + "data/screen_data.json", timeout=30) as response:
+            deployed = response.read()
+        checks.expect(
+            hashlib.sha256(deployed).hexdigest()
+            == hashlib.sha256(arguments.data.read_bytes()).hexdigest(),
+            "the deployed screen_data.json differs from the local one",
+        )
+    else:
+        server, url = serve(REPOSITORY_ROOT / "web")
     try:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch()
@@ -232,7 +250,8 @@ def main() -> int:
             checks.expect(widths[0] <= widths[1], f"page scrolls sideways at 400 px: {widths}")
             browser.close()
     finally:
-        server.shutdown()
+        if server is not None:
+            server.shutdown()
 
     checks.expect(not console_errors, f"console errors: {console_errors[:3]}")
     print(f"{checks.count} checks, {len(checks.failures)} failed")
