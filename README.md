@@ -27,7 +27,7 @@ The left column comes from a validated prediction model. The right column holds 
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TB
     A[MIMIC-IV v3.1<br/>DuckDB + mimic-code concepts] --> B[Five canonical tables<br/>stays, recognition, measurements,<br/>treatments, hourly SOFA]
     S[Synthetic generator<br/>same five tables] --> B
     B --> C[Sepsis-3 cohort<br/>time zero = recognition]
@@ -66,7 +66,7 @@ An example report on synthetic data is in [reports/synthetic-v0.1](reports/synth
 mamba env create -f environment.yml && conda activate sepsis_hmm
 make setup         # pinned packages and this package
 make test          # unit tests on generated data
-make synth         # full run on 2,000 synthetic stays (a few minutes on a laptop)
+make synth         # full run on 2,000 synthetic stays (a few minutes)
 make screen RUN=synthetic-default
 make serve         # http://localhost:8000
 ```
@@ -78,11 +78,11 @@ make serve         # http://localhost:8000
 MIMIC-IV requires a credentialed PhysioNet account, CITI training and a signed data use agreement. The data stays on the analyst's own computer. [docs/data_governance.md](docs/data_governance.md) gives the download and build steps and the rules this project follows.
 
 ```bash
-conda activate sepsis_hmm       # includes the DuckDB CLI 1.4.4 and wget
-# download MIMIC-IV v3.1 and build ~/physionet/mimic4.db (docs/m1_runbook.md)
-make mimic-check                # aggregate counts only
-make m1-check                   # the M1 gate check: aggregate report for fixing the analysis plan
-make mimic                      # full run, only after the analysis plan is registered
+conda activate sepsis_hmm   # includes the DuckDB CLI 1.4.4 and wget
+# download MIMIC-IV v3.1, build ~/physionet/mimic4.db (docs/m1_runbook.md)
+make mimic-check            # aggregate counts only
+make m1-check               # M1 gate check: aggregates that fix the plan
+make mimic                  # full run, once the analysis plan is registered
 ```
 
 Before the first real results, the M1 check ([docs/m1_runbook.md](docs/m1_runbook.md)) confirms the build against mimic-code's expected row counts, compares the Sepsis-3 count with a published one, reproduces the course prototype's cohort funnel rule for rule, and reports how the outcome behaves under alternative definitions. Those aggregates fix the remaining choices in the analysis plan ([docs/analysis_plan.md](docs/analysis_plan.md)), which is registered on OSF before any model is fitted on MIMIC-IV.
@@ -97,25 +97,29 @@ Before the first real results, the M1 check ([docs/m1_runbook.md](docs/m1_runboo
 ## Repository layout
 
 ```
-configs/default.yaml            every setting, with units in the names
-configs/cohort, configs/outcomes  sensitivity analyses: one file changes one setting
+configs/
+    default.yaml            every setting, with units in the names
+    cohort/, outcomes/      sensitivity analyses: one file changes one setting
 src/sepsis_decision_support/
-    data/                       canonical tables, SQL for mimic-code DuckDB, synthetic generator
-    cohort/                     cohort rules, time zero, landmarks
-    outcomes/                   treatment-independent shock, labels
-    features/                   predictors as of each landmark
-    models/                     D1 landmark model, SOFA and NEWS2 baselines
-    evaluation/                 metrics, alert burden, report runner, Markdown report
-    decision_support/           screen data export, external evidence table
-    privacy/                    aggregate guard
-    checks/                     M1 gate check (aggregate only)
-    visualization/              report figures
-    cli.py                      sepsis-support run | extract-check | m1-check | web-export | check-privacy
-web/                            the decision-support screen (static, GitHub Pages)
-scripts/                        demo build, screen check, file guard
-tests/                          unit tests; SQL tests on the open demo
-docs/                           design rationale, prototype lessons, data governance,
-                                decisions, model card, analysis plan, M1 runbook, sources
+    data/                   canonical tables, SQL on mimic-code DuckDB,
+                            synthetic generator
+    cohort/                 cohort rules, time zero, landmarks
+    outcomes/               treatment-independent shock, labels
+    features/               predictors as of each landmark
+    models/                 D1 landmark model, SOFA and NEWS2 baselines
+    evaluation/             metrics, alert burden, report runner and Markdown
+    decision_support/       screen data export, external evidence table
+    privacy/                aggregate guard
+    checks/                 M1 gate check (aggregate only)
+    visualization/          report figures
+    cli.py                  sepsis-support run, extract-check, m1-check,
+                            web-export, check-privacy
+web/                        the decision-support screen (GitHub Pages)
+scripts/                    demo build, screen check, file guard
+tests/                      unit tests; SQL tests on toy tables and the demo
+docs/                       design rationale, prototype lessons, data
+                            governance, decisions, model card, analysis
+                            plan, M1 runbook, sources
 ```
 
 ## Roadmap
