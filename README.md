@@ -135,4 +135,4 @@ Built with AI pair programming (Claude). Design decisions and what would change 
 
 ## Citation and licence
 
-Code: MIT ([LICENSE](LICENSE)). If you use MIMIC-IV, cite it as PhysioNet asks; [CITATION.cff](CITATION.cff) lists the dataset, the demo and mimic-code.
+Code: MIT ([LICENSE](LICENSE)). The licence covers the code only: MIMIC-IV is not included and is available from PhysioNet under its own licence and data use agreement. If you use MIMIC-IV, cite it as PhysioNet asks; [CITATION.cff](CITATION.cff) lists the dataset, the demo and mimic-code.
