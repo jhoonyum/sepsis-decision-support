@@ -1,6 +1,6 @@
 # Lessons from the prototype, as requirements
 
-This project began as a course team project: a hidden Markov model of sepsis progression on MIMIC-IV, written in notebooks. Rebuilding it started with a line-by-line review of that prototype. This page lists what the review found, grouped by the kind of failure, and the safeguard each lesson became here. It is a requirements document, not an audit: most of these mistakes are easy to make with ICU data, and several are documented pitfalls.
+This project began as a course team project: a hidden Markov model of sepsis progression on MIMIC-IV, written in notebooks. Rebuilding it started with a line-by-line review of that prototype, which found 17 issues in its data handling and modelling. This page groups the main ones by the kind of failure and gives the safeguard each lesson became here. It is a requirements document, not an audit: most of these mistakes are easy to make with ICU data, and several are documented pitfalls.
 
 ## Failure types and safeguards
 
