@@ -4,7 +4,7 @@ Calibrated 24-hour deterioration risk for ICU patients with sepsis, built on MIM
 
 ![The decision-support screen with a synthetic patient](docs/images/screen.png)
 
-**Status: v0.1.** The pipeline runs end to end on synthetic data. On the open MIMIC-IV demo, the same SQL, cohort, labels and features run in CI (the demo's 100 patients are too few to fit the models). Results on the full MIMIC-IV database arrive in v0.2. Research use only; not a medical device.
+**Status: v0.1.** The pipeline runs end to end on synthetic data. On the open MIMIC-IV demo, the same SQL, cohort, labels and features run in CI, and so does the M1 check (the demo's 100 patients are too few to fit the models). Results on the full MIMIC-IV database arrive in v0.2. Research use only; not a medical device.
 
 **Screen:** [jhoonyum.github.io/sepsis-decision-support](https://jhoonyum.github.io/sepsis-decision-support/) (synthetic patients).
 
@@ -79,15 +79,18 @@ MIMIC-IV requires a credentialed PhysioNet account, CITI training and a signed d
 
 ```bash
 conda activate sepsis_hmm       # includes the DuckDB CLI 1.4.4 and wget
-# download MIMIC-IV v3.1 and build ~/physionet/mimic4.db (docs/data_governance.md)
+# download MIMIC-IV v3.1 and build ~/physionet/mimic4.db (docs/m1_runbook.md)
 make mimic-check                # aggregate counts only
-make mimic                      # full run; the run folder stays outside the repository
+make m1-check                   # the M1 gate check: aggregate report for fixing the analysis plan
+make mimic                      # full run, only after the analysis plan is registered
 ```
+
+Before the first real results, the M1 check ([docs/m1_runbook.md](docs/m1_runbook.md)) confirms the build against mimic-code's expected row counts, compares the Sepsis-3 count with a published one, reproduces the course prototype's cohort funnel rule for rule, and reports how the outcome behaves under alternative definitions. Those aggregates fix the remaining choices in the analysis plan ([docs/analysis_plan.md](docs/analysis_plan.md)), which is registered on OSF before any model is fitted on MIMIC-IV.
 
 ## Data protection
 
 - No record-level MIMIC-IV data leaves the analyst's computer, and none is sent to online services.
-- Everything published passes `privacy/aggregate_guard.py`: no record identifiers, no per-patient lists, no count below 11, and no rate whose count or complement is below 11. Small calibration bins and cohort steps are merged with their neighbours, and a second group is hidden in any subgroup table where one is, so a hidden cell cannot be worked out from the others. Links between different tables are checked by hand before each release.
+- Everything published passes `privacy/aggregate_guard.py`: no record identifiers, no per-patient lists, no count below 11, and no rate whose count or complement is below 11. Small calibration bins and cohort steps are merged with their neighbours, and a second group is hidden in any subgroup table where one is, so a hidden cell cannot be worked out from the others. Tables that count the same patients under alternative definitions use counts rounded to the nearest 10. Links between different tables are checked by hand before each release; the M1 check also withholds any count of stays or patients within 10 of another count or reference figure it prints.
 - `scripts/guard_data_files.py` refuses data files, notebooks and large files in CI and, once installed with `pip install pre-commit && pre-commit install`, before every commit.
 - The screen shows synthetic patients only. From v0.2 they are scored by the model fitted on MIMIC-IV; its coefficients are aggregates.
 
@@ -95,6 +98,7 @@ make mimic                      # full run; the run folder stays outside the rep
 
 ```
 configs/default.yaml            every setting, with units in the names
+configs/cohort, configs/outcomes  sensitivity analyses: one file changes one setting
 src/sepsis_decision_support/
     data/                       canonical tables, SQL for mimic-code DuckDB, synthetic generator
     cohort/                     cohort rules, time zero, landmarks
@@ -104,13 +108,14 @@ src/sepsis_decision_support/
     evaluation/                 metrics, alert burden, report runner, Markdown report
     decision_support/           screen data export, external evidence table
     privacy/                    aggregate guard
+    checks/                     M1 gate check (aggregate only)
     visualization/              report figures
-    cli.py                      sepsis-support run | extract-check | web-export | check-privacy
+    cli.py                      sepsis-support run | extract-check | m1-check | web-export | check-privacy
 web/                            the decision-support screen (static, GitHub Pages)
 scripts/                        demo build, screen check, file guard
 tests/                          unit tests; SQL tests on the open demo
 docs/                           design rationale, prototype lessons, data governance,
-                                decisions, model card, sources
+                                decisions, model card, analysis plan, M1 runbook, sources
 ```
 
 ## Roadmap

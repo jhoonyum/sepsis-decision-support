@@ -40,6 +40,7 @@ from sepsis_decision_support.models.landmark_model import (
 from sepsis_decision_support.outcomes.labels import PRE_SHOCK, SHOCK_STAGE
 from sepsis_decision_support.pipeline import PreparedData
 from sepsis_decision_support.privacy.aggregate_guard import (
+    HIDDEN_IN_PARTITION,
     complementary_suppression,
     count_cell,
     publishable_flow,
@@ -407,7 +408,7 @@ def _summaries_by_group(
         for name, inside in members.items()
     }
     hidden = complementary_suppression(cells, minimum)
-    label = suppressed_label(minimum)
+    label = HIDDEN_IN_PARTITION
     summaries = {}
     for name, inside in members.items():
         if name in hidden:

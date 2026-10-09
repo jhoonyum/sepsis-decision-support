@@ -70,6 +70,10 @@ jobs:
         run: sepsis-support extract-check --duckdb "$DEMO_DIR/mimic4_demo.db"
       - name: SQL tests
         run: MIMIC_DEMO_DUCKDB="$DEMO_DIR/mimic4_demo.db" pytest -m demo
+      - name: M1 check on the demo (open data, so the report goes to the job summary)
+        run: |
+          sepsis-support m1-check --duckdb "$DEMO_DIR/mimic4_demo.db" --run-name m1-check-demo
+          cat "$HOME/sepsis_runs/m1-check-demo/m1_check.md" >> "$GITHUB_STEP_SUMMARY"
 
   screen:
     name: Drive the decision-support screen

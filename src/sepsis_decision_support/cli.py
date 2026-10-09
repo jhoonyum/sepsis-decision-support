@@ -4,6 +4,9 @@ Commands
     run            prepare data, fit and validate D1, write the aggregate report and figures
     extract-check  extract the canonical tables from a mimic-code DuckDB file and print
                    aggregate counts (a smoke test for the SQL; nothing record-level is printed)
+    m1-check       the M1 gate check on a mimic-code DuckDB file: database counts, published
+                   and prototype cohort counts, both cohorts, outcome-definition grid
+                   (aggregate-only JSON and Markdown)
     web-export     write the decision-support screen's data (synthetic patients only)
     check-privacy  check that a JSON file is aggregate-only
 """
@@ -150,11 +153,12 @@ def extract_check(duckdb_path: DuckdbFile = None, config: ConfigFiles = None) ->
     """Extract and validate the canonical tables, then print aggregate counts only.
 
     Used by CI on the open MIMIC-IV demo, and on the full database as the first check
-    after a build. Counts below the minimum cell size are printed as "<11".
+    after a build. Counts below the minimum cell size are printed as "<11", and cohort-flow
+    steps that exclude fewer than the minimum are merged with the next step.
     """
     from sepsis_decision_support.cohort.cohort_builder import build_cohort
     from sepsis_decision_support.pipeline import landmark_data, load_tables
-    from sepsis_decision_support.privacy.aggregate_guard import count_cell
+    from sepsis_decision_support.privacy.aggregate_guard import count_cell, publishable_flow
 
     if duckdb_path is None:
         raise typer.BadParameter("--duckdb is required")
@@ -170,7 +174,7 @@ def extract_check(duckdb_path: DuckdbFile = None, config: ConfigFiles = None) ->
         "table_rows": {
             name: count_cell(len(table), minimum) for name, table in tables.as_dictionary().items()
         },
-        "cohort_flow": [[step, count_cell(count, minimum)] for step, count in cohort.flow],
+        "cohort_flow": publishable_flow(cohort.flow, minimum),
         "training_landmarks": count_cell(len(training.rows), minimum),
         "training_landmarks_by_population": {
             population: count_cell(count, minimum)
@@ -179,6 +183,45 @@ def extract_check(duckdb_path: DuckdbFile = None, config: ConfigFiles = None) ->
     }
     assert_aggregate_only(summary)
     typer.echo(json.dumps(summary, indent=2))
+
+
+@app.command("m1-check")
+def m1_check(
+    duckdb_path: DuckdbFile = None,
+    config: ConfigFiles = None,
+    run_name: Annotated[
+        str | None, typer.Option(help="Name of the run folder; defaults to m1-check-<date>.")
+    ] = None,
+) -> None:
+    """Run the aggregate-only M1 gate check and print its Markdown summary.
+
+    Writes ``m1_check.json`` (checked by the aggregate guard) and ``m1_check.md`` to the
+    run folder. Nothing record-level is written or printed. Takes a few minutes on the
+    full database.
+    """
+    from sepsis_decision_support.checks.m1 import build_m1_report, collect_m1_inputs
+    from sepsis_decision_support.checks.m1_markdown import render_m1_markdown
+
+    if duckdb_path is None:
+        raise typer.BadParameter("--duckdb is required")
+    overrides = {"data": {"source": "mimic_duckdb", "duckdb_path": str(duckdb_path)}}
+    settings = load_settings(*(config or []), overrides=overrides)
+    name = run_name or "m1-check-" + datetime.now(UTC).strftime("%Y%m%d")
+    run_directory = settings.runs.directory / name
+    run_directory.mkdir(parents=True, exist_ok=True)
+
+    inputs = collect_m1_inputs(duckdb_path, settings)
+    report = build_m1_report(inputs, settings)
+    report["code_revision"] = _git_revision()
+    report["created_utc"] = datetime.now(UTC).isoformat(timespec="seconds")
+    report["package_versions"] = _package_versions()
+    write_aggregate_json(
+        report, run_directory / "m1_check.json", run_directory / "privacy_log.jsonl", "M1 check"
+    )
+    markdown = render_m1_markdown(report) + "\n"
+    (run_directory / "m1_check.md").write_text(markdown, encoding="utf-8")
+    typer.echo(markdown)
+    typer.echo(f"Wrote {run_directory / 'm1_check.json'} and m1_check.md")
 
 
 @app.command("web-export")

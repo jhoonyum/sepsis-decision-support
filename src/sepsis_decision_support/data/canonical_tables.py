@@ -9,7 +9,8 @@ Why a fixed intermediate format?
 
 Tables (one pandas DataFrame each):
     stays         one row per ICU stay
-    recognition   one row per ICU stay in which sepsis was recognised (time R and its parts)
+    recognition   one row per ICU stay that meets the cohort's infection definition
+                  (Sepsis-3, or the culture-antibiotic pair): time R and its parts
     measurements  long format: one row per measured value
     treatments    one row per treatment interval
     sofa_hourly   one row per stay-hour: SOFA over the preceding 24 hours
@@ -100,10 +101,10 @@ RECOGNITION = TableSpecification(
     name="recognition",
     integer_columns=("stay_id",),
     time_columns=(
-        "recognition_time",  # R: earliest time all Sepsis-3 criteria were on record
+        "recognition_time",  # R: earliest time every criterion of the definition was on record
         "antibiotic_time",
         "culture_time",
-        "organ_dysfunction_time",  # first SOFA >= 2 that qualified
+        "organ_dysfunction_time",  # first SOFA >= 2 that qualified (Sepsis-3 only, else missing)
     ),
 )
 

@@ -20,7 +20,9 @@ How a stay is generated
        the way bedside vital signs are.
     4. Treatment decisions that react to the measurements, as clinicians do. A
        vasopressor raises blood pressure, which hides part of the patient's severity.
-    5. SOFA over the preceding 24 hours, and the Sepsis-3 recognition time R.
+    5. SOFA over the preceding 24 hours, suspicion of infection (antibiotic and culture
+       times), and the recognition time R under the chosen definition (Sepsis-3 or the
+       course's culture-antibiotic pair).
 """
 
 from __future__ import annotations
@@ -128,6 +130,7 @@ def generate_canonical_tables(
     number_of_stays: int,
     seed: int,
     parameters: GeneratorParameters | None = None,
+    recognition_definition: str = "sepsis3",
 ) -> CanonicalTables:
     """Generate ``number_of_stays`` synthetic ICU stays.
 
@@ -135,10 +138,15 @@ def generate_canonical_tables(
         number_of_stays: how many ICU stays to create (some belong to the same patient).
         seed: random seed; the same seed always gives the same tables.
         parameters: generator settings; defaults are used when omitted.
+        recognition_definition: which rule fills the recognition table, as in
+            ``cohort.definition``: "sepsis3" or "culture_antibiotic_pair". The stays and
+            their measurements are the same either way.
 
     Returns:
         CanonicalTables with the five tables described in ``canonical_tables``.
     """
+    if recognition_definition not in ("sepsis3", "culture_antibiotic_pair"):
+        raise ValueError(f"unknown recognition definition {recognition_definition!r}")
     parameters = parameters or GeneratorParameters()
     random = np.random.default_rng(seed)
     patients = _sample_stay_characteristics(number_of_stays, random)
@@ -150,7 +158,7 @@ def generate_canonical_tables(
     sofa_rows: list[tuple] = []
 
     for patient in patients:
-        stay = _simulate_one_stay(patient, parameters, random)
+        stay = _simulate_one_stay(patient, parameters, random, recognition_definition)
         stay_rows.append(stay["stay_row"])
         if stay["recognition_row"] is not None:
             recognition_rows.append(stay["recognition_row"])
@@ -257,7 +265,10 @@ def _sample_hospital_service(care_unit: str, random: np.random.Generator) -> str
 
 
 def _simulate_one_stay(
-    patient: dict, parameters: GeneratorParameters, random: np.random.Generator
+    patient: dict,
+    parameters: GeneratorParameters,
+    random: np.random.Generator,
+    recognition_definition: str = "sepsis3",
 ) -> dict:
     """Simulate the hidden path, measurements, treatments, SOFA and recognition for one stay."""
     era_start_year = 2008 + 3 * patient["era_index"]
@@ -272,7 +283,11 @@ def _simulate_one_stay(
 
     timeline = _simulate_measurements_and_treatments(patient, path, parameters, random)
     sofa_by_hour = _hourly_sofa(timeline, stay_hours)
-    recognition = _recognition_times(patient, sofa_by_hour, stay_hours, parameters, random)
+    suspicion = _suspicion_of_infection(stay_hours, parameters, random)
+    if recognition_definition == "sepsis3":
+        recognition = _sepsis3_recognition(suspicion, sofa_by_hour)
+    else:
+        recognition = _culture_antibiotic_pair_recognition(suspicion)
 
     death_time, date_of_death, hospital_discharge_hours = _deaths_after_icu(
         path, stay_hours, patient, random
@@ -306,7 +321,10 @@ def _simulate_one_stay(
     if recognition is not None:
         recognition_row = {
             "stay_id": stay_id,
-            **{name: to_time(hours) for name, hours in recognition.items()},
+            **{
+                name: to_time(hours) if not np.isnan(hours) else pd.NaT
+                for name, hours in recognition.items()
+            },
         }
 
     measurement_rows = [
@@ -317,13 +335,14 @@ def _simulate_one_stay(
         (stay_id, treatment, to_time(start), to_time(end), rate)
         for treatment, start, end, rate in timeline["treatments"]
     ]
-    if recognition is not None:
-        antibiotic_end = min(recognition["antibiotic_time"] + 7 * 24, stay_hours)
+    if suspicion is not None:
+        # The antibiotic was given whether or not the stay meets a recognition rule.
+        antibiotic_end = min(suspicion["antibiotic_time"] + 7 * 24, stay_hours)
         treatment_rows.append(
             (
                 stay_id,
                 "antibiotic",
-                to_time(recognition["antibiotic_time"]),
+                to_time(suspicion["antibiotic_time"]),
                 to_time(antibiotic_end),
                 np.nan,
             )
@@ -606,18 +625,13 @@ def _hourly_sofa(timeline: dict, stay_hours: float) -> list[tuple[float, float, 
     return rows
 
 
-def _recognition_times(
-    patient: dict,
-    sofa_by_hour: list[tuple[float, float, float]],
-    stay_hours: float,
-    parameters: GeneratorParameters,
-    random: np.random.Generator,
+def _suspicion_of_infection(
+    stay_hours: float, parameters: GeneratorParameters, random: np.random.Generator
 ) -> dict[str, float] | None:
-    """Sepsis-3 recognition, following the same rule as the real-data SQL.
+    """Antibiotic start and culture time, in hours after ICU admission, or None.
 
-    Infection is suspected (culture plus antibiotic) in most stays. Recognition time R is
-    the moment the last of the three criteria is on record: antibiotic, culture, and the
-    first SOFA >= 2 within 48 hours before to 24 hours after the suspicion time.
+    Infection is suspected in most stays. The culture is taken up to 2 hours before the
+    antibiotic, so about half of the pairs fall within the 1-hour course definition.
     """
     if random.random() > parameters.probability_sepsis_suspected:
         return None
@@ -625,6 +639,21 @@ def _recognition_times(
     if antibiotic_hour >= stay_hours:
         return None
     culture_hour = max(0.0, antibiotic_hour - float(random.uniform(0.0, 2.0)))
+    return {"antibiotic_time": antibiotic_hour, "culture_time": culture_hour}
+
+
+def _sepsis3_recognition(
+    suspicion: dict[str, float] | None, sofa_by_hour: list[tuple[float, float, float]]
+) -> dict[str, float] | None:
+    """Sepsis-3 recognition, following the same rule as the real-data SQL.
+
+    Recognition time R is the moment the last of the three criteria is on record:
+    antibiotic, culture, and the first SOFA >= 2 within 48 hours before to 24 hours after
+    the suspicion time.
+    """
+    if suspicion is None:
+        return None
+    antibiotic_hour, culture_hour = suspicion["antibiotic_time"], suspicion["culture_time"]
     suspicion_hour = min(culture_hour, antibiotic_hour)
     qualifying_hours = [
         hour_end
@@ -639,6 +668,23 @@ def _recognition_times(
         "antibiotic_time": antibiotic_hour,
         "culture_time": culture_hour,
         "organ_dysfunction_time": organ_dysfunction_hour,
+    }
+
+
+def _culture_antibiotic_pair_recognition(
+    suspicion: dict[str, float] | None,
+) -> dict[str, float] | None:
+    """The course definition: antibiotic and culture within 1 hour; R is the later of the two."""
+    if suspicion is None:
+        return None
+    antibiotic_hour, culture_hour = suspicion["antibiotic_time"], suspicion["culture_time"]
+    if abs(antibiotic_hour - culture_hour) > 1.0:
+        return None
+    return {
+        "recognition_time": max(antibiotic_hour, culture_hour),
+        "antibiotic_time": antibiotic_hour,
+        "culture_time": culture_hour,
+        "organ_dysfunction_time": np.nan,
     }
 
 

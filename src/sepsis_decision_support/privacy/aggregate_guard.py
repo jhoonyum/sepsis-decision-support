@@ -12,11 +12,18 @@ Why this module exists
 
 Cells that could be worked out from other cells
     Hiding one small cell is not enough when the other cells of the same table and its
-    total are published: the hidden value is the total minus the rest. Three tools close
-    that gap: ``complementary_suppression`` hides a second cell in a partition (subgroups,
-    eras), ``merge_sparse_groups`` merges adjacent bins of a calibration table instead of
+    total are published: the hidden value is the total minus the rest. Four tools close
+    that gap: ``complementary_suppression`` and ``count_partition_cells`` hide a second
+    cell in a partition (subgroups, eras, categories), ``merge_sparse_groups`` and
+    ``merge_sparse_counts`` merge adjacent bins (calibration tables, time bins) instead of
     hiding them, and ``publishable_flow`` merges cohort-flow steps that exclude fewer than
     the minimum. Links between different tables are reviewed by hand before each release.
+
+Tables of alternative definitions
+    When the same patients are counted under several definitions (a sensitivity grid),
+    the difference between two rows is itself a group of patients, possibly a small one.
+    Such tables publish counts rounded to the nearest 10 (``rounded_count_cell``) and
+    rates computed from the rounded counts, so no exact difference can be recovered.
 
 How to use it
     Build report dictionaries with ``count_cell`` and ``rate_cell`` instead of raw
@@ -57,6 +64,12 @@ class PrivacyViolationError(ValueError):
     """Raised when an output looks record-level or contains a small cell."""
 
 
+# Groups hidden in a partition: some are below the minimum, others are hidden with them so
+# that a small group cannot be worked out from the total. They share one label, which does
+# not say which is which.
+HIDDEN_IN_PARTITION = "hidden"
+
+
 def suppressed_label(minimum_cell_size: int) -> str:
     return f"<{minimum_cell_size}"
 
@@ -68,6 +81,37 @@ def count_cell(count: int, minimum_cell_size: int) -> int | str:
     """
     count = int(count)
     return count if count >= minimum_cell_size else suppressed_label(minimum_cell_size)
+
+
+def rounded_count_cell(count: int, minimum_cell_size: int, base: int = 10) -> int | str:
+    """A count rounded to the nearest ``base``, or the suppression label below the minimum.
+
+    Halves round up (15 -> 20), unlike Python's ``round``, so the rule is easy to state.
+    """
+    count = int(count)
+    if count < minimum_cell_size:
+        return suppressed_label(minimum_cell_size)
+    return int(base * math.floor(count / base + 0.5))
+
+
+def rounded_rate_cell(
+    numerator: int, denominator: int, minimum_cell_size: int, base: int = 10, decimals: int = 3
+) -> dict[str, Any] | str:
+    """A proportion computed from counts rounded to the nearest ``base``.
+
+    Suppressed under the same rule as ``rate_cell``. Only the rounded counts and the rate
+    between them are published, so the exact counts cannot be recovered from the rate.
+    """
+    numerator, denominator = int(numerator), int(denominator)
+    if min(numerator, denominator - numerator, denominator) < minimum_cell_size:
+        return suppressed_label(minimum_cell_size)
+    rounded_numerator = rounded_count_cell(numerator, minimum_cell_size, base)
+    rounded_denominator = rounded_count_cell(denominator, minimum_cell_size, base)
+    return {
+        "rate": round(rounded_numerator / rounded_denominator, decimals),
+        "numerator_rounded": rounded_numerator,
+        "denominator_rounded": rounded_denominator,
+    }
 
 
 def rate_cell(
@@ -220,6 +264,46 @@ def merge_sparse_groups(
         group_rows = sum(rows[index] for index in current)
         group_events = sum(events[index] for index in current)
         if not _is_small(group_rows, group_events, minimum_cell_size):
+            groups.append(current)
+            current = []
+    if current:
+        if groups:
+            groups[-1].extend(current)
+        else:
+            groups.append(current)
+    return groups
+
+
+def count_partition_cells(counts: dict[str, int], minimum_cell_size: int) -> dict[str, int | str]:
+    """Publishable counts for the groups of a partition whose total is published elsewhere.
+
+    Every group below the minimum is hidden; then the next-smallest groups are hidden until
+    at least two are hidden and the hidden groups together hold at least the minimum, so
+    no hidden group equals the total minus the published ones.
+    """
+    hidden = {key for key, count in counts.items() if count < minimum_cell_size}
+    if hidden:
+        others = sorted((key for key in counts if key not in hidden), key=lambda key: counts[key])
+        while others and (
+            len(hidden) < 2 or sum(counts[key] for key in hidden) < minimum_cell_size
+        ):
+            hidden.add(others.pop(0))
+    return {
+        key: HIDDEN_IN_PARTITION if key in hidden else int(count) for key, count in counts.items()
+    }
+
+
+def merge_sparse_counts(counts: list[int], minimum_cell_size: int) -> list[list[int]]:
+    """Merge adjacent bins of a plain count histogram until each holds the minimum.
+
+    Like ``merge_sparse_groups`` without events: works left to right and merges a short
+    last group into the one before it. Returns lists of original bin positions.
+    """
+    groups: list[list[int]] = []
+    current: list[int] = []
+    for position, _ in enumerate(counts):
+        current.append(position)
+        if sum(counts[index] for index in current) >= minimum_cell_size:
             groups.append(current)
             current = []
     if current:

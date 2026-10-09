@@ -73,3 +73,29 @@ def test_longest_run_and_default_hour():
     assert _default_now("on_vasopressor", hourly) == 11.0  # middle of the vasopressor run
     assert _default_now("uncertain", hourly) == 4.0  # widest interval
     assert _default_now("steady", hourly) == 10.0
+
+
+def test_synthetic_pair_definition_changes_only_the_recognition_table():
+    sepsis3 = generate_canonical_tables(150, seed=5)
+    pairs = generate_canonical_tables(150, seed=5, recognition_definition="culture_antibiotic_pair")
+    for name in ("stays", "measurements", "treatments", "sofa_hourly"):
+        pd.testing.assert_frame_equal(
+            sepsis3.as_dictionary()[name], pairs.as_dictionary()[name], obj=name
+        )
+    recognition = pairs.recognition
+    assert len(recognition) > 0
+    gap = (recognition["antibiotic_time"] - recognition["culture_time"]).abs()
+    assert (gap <= pd.Timedelta(hours=1)).all()
+    later_event = recognition[["antibiotic_time", "culture_time"]].max(axis=1)
+    assert (recognition["recognition_time"] == later_event).all()
+    assert recognition["organ_dysfunction_time"].isna().all()
+
+
+def test_cohort_config_files_load():
+    from sepsis_decision_support.config import REPOSITORY_ROOT
+
+    pair = load_settings(REPOSITORY_ROOT / "configs/cohort/culture_antibiotic_pair.yaml")
+    assert pair.cohort.definition == "culture_antibiotic_pair"
+    assert pair.cohort.minimum_age_years == load_settings().cohort.minimum_age_years
+    operational = load_settings(REPOSITORY_ROOT / "configs/outcomes/sepsis3_operational_shock.yaml")
+    assert operational.outcomes.shock_definition == "sepsis3_operational"

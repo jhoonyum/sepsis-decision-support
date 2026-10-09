@@ -46,14 +46,17 @@ def load_tables(settings: Settings) -> CanonicalTables:
     """Canonical tables from the configured data source."""
     if settings.data.source == "synthetic":
         tables = generate_canonical_tables(
-            settings.data.synthetic.number_of_stays, seed=settings.seed
+            settings.data.synthetic.number_of_stays,
+            seed=settings.seed,
+            recognition_definition=settings.cohort.definition,
         )
     else:
         from sepsis_decision_support.data.mimic_extract import extract_canonical_tables
 
         if settings.data.duckdb_path is None:
             raise ValueError("data.duckdb_path must point to a mimic-code DuckDB file")
-        tables = extract_canonical_tables(settings.data.duckdb_path)
+        # Measurements and treatments are read for the cohort's stays only.
+        tables = extract_canonical_tables(settings.data.duckdb_path, settings.cohort)
     problems = validate_tables(tables)
     if problems:
         raise ValueError("canonical tables failed validation:\n  " + "\n  ".join(problems))
@@ -67,7 +70,7 @@ def landmark_data(
     settings: Settings,
 ) -> LandmarkData:
     landmarks = build_landmarks(cohort.stays, hours)
-    shock_events = shock_event_times(tables.measurements, settings.outcomes)
+    shock_events = shock_event_times(tables.measurements, settings.outcomes, tables.treatments)
     rows = label_landmarks(landmarks, shock_events, tables.treatments, settings.outcomes)
     features = build_landmark_features(rows, tables, settings.features)
     return LandmarkData(rows=rows, features=features)

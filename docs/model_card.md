@@ -47,7 +47,8 @@ Follows the structure of applied model cards used in health-system model registr
 - Temporal validation: the most recent admission years (2020 to 2022) held out from fitting.
 - Comparison: SOFA and NEWS2, each recalibrated on the same folds.
 - External validation: none yet (eICU is planned after v1.0).
-- Analysis plan registered before the temporal hold-out is evaluated (*v0.2*).
+- Analysis plan registered on OSF before any model is fitted on MIMIC-IV or the temporal hold-out is evaluated; draft in [analysis_plan.md](analysis_plan.md) (*v0.2*: link to the registration).
+- Sensitivity analyses: the culture-antibiotic cohort (`configs/cohort/culture_antibiotic_pair.yaml`) and the Sepsis-3 operational shock outcome (`configs/outcomes/sepsis3_operational_shock.yaml`).
 
 ## Performance
 

@@ -55,6 +55,8 @@ A patient can only enter a sepsis cohort once every criterion is on record: susp
 
 For the same reason there is no length-of-stay filter: how long a stay lasts is only known when it ends.
 
+The sensitivity cohort replaces Sepsis-3 with the course prototype's infection rule (an ICU antibiotic infusion and an ICU culture within one hour); R is then the later of the two events in the first complete pair, and every other rule stays the same (`configs/cohort/culture_antibiotic_pair.yaml`).
+
 ## 5. Shock is defined without vasopressors
 
 The Sepsis-3 definition of septic shock requires a vasopressor. A model that predicted it would partly predict the clinician's decision to start one, and a screen offering "start a vasopressor now" would be offering the outcome itself. Here shock is:
@@ -62,7 +64,7 @@ The Sepsis-3 definition of septic shock requires a vasopressor. A model that pre
 - **sustained hypotension**: two or more mean arterial pressure readings below 65 mmHg, at least 30 minutes apart, with no normal reading between them and no gap over 2 hours; and
 - **lactate above 2 mmol/L** within 6 hours before or after.
 
-The Sepsis-3 operational definition is planned as a sensitivity analysis for v0.2. Known weaknesses: the definition depends on how often lactate is measured, and shock can only be observed in the ICU. Deaths count wherever they happen.
+The Sepsis-3 operational definition is the sensitivity analysis (`configs/outcomes/sepsis3_operational_shock.yaml`): a vasopressor episode with lactate above 2 mmol/L within 6 hours of its start. Known weaknesses of the main definition: it depends on how often lactate is measured, and shock can only be observed in the ICU. Deaths count wherever they happen. The thresholds, durations and lactate window are fixed from the M1 check before the analysis plan is registered ([analysis_plan.md](analysis_plan.md), section 4).
 
 ## 6. Two stages, two sets of models
 

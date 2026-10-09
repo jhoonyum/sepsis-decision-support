@@ -169,7 +169,7 @@ def subgroup_figure(report: dict, directory: Path) -> list[Path]:
     for grouping, groups in report["subgroups"].items():
         for name, summary in groups.items():
             rows = summary["rows"]
-            size = f"n = {rows:,} landmarks" if isinstance(rows, int) else f"n {rows}"
+            size = f"n = {rows:,} landmarks" if isinstance(rows, int) else str(rows)
             labels.append(f"{grouping.replace('_', ' ')}: {name} ({size})")
             measures = summary["measures"]
             values.append(measures["auroc"]["estimate"] if measures else None)
@@ -188,7 +188,7 @@ def subgroup_figure(report: dict, directory: Path) -> list[Path]:
     for position, value in zip(positions, values, strict=True):
         if value is None:
             axis.annotate(
-                "too few events to report",
+                "not reported (too few events, or hidden with a small group)",
                 (0.5, position),
                 fontsize=8,
                 color="#898781",

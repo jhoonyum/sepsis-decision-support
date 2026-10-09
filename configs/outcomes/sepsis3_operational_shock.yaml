@@ -1,0 +1,8 @@
+# Sensitivity analysis: shock as defined operationally by Sepsis-3, which requires a
+# vasopressor. The event is a vasopressor episode with lactate above the threshold in the
+# window around its start. Because the definition contains the treatment, a model trained
+# on it partly predicts the decision to start a vasopressor; see docs/design_rationale.md.
+#
+# Usage: sepsis-support run --config configs/outcomes/sepsis3_operational_shock.yaml ...
+outcomes:
+  shock_definition: sepsis3_operational

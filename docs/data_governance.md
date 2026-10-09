@@ -19,7 +19,8 @@ MIMIC-IV is credentialed data. This page states the rules the project follows, h
 | Run folders outside the repository | Runs are written to `~/sepsis_runs/<run name>/` (configurable). Patient-level files stay there. |
 | `scripts/guard_data_files.py` | Refuses data files (CSV, Parquet, DuckDB, NumPy, pickles, spreadsheets), notebooks, files over 2 MB and non-aggregate JSON under `reports/` and `web/data/`. Runs on every tracked file in CI, and before each commit once the pre-commit hook is installed (`pre-commit install`). |
 | `.gitignore` | Ignores the same file types and the local data folders. |
-| `sepsis-support extract-check` | The first check after a build prints table sizes and the cohort flow only, already suppressed. |
+| `sepsis-support extract-check` | The first check after a build prints table sizes and the cohort flow only, with small counts suppressed and small flow steps merged. |
+| `sepsis-support m1-check` | The M1 gate check ([m1_runbook.md](m1_runbook.md)) writes one aggregate report through `write_aggregate_json`. Tables that count the same patients under alternative definitions publish counts rounded to the nearest 10 (`rounded_count_cell`, `rounded_rate_cell`), and every exact count of stays or patients (cohort-flow steps, database counts, funnel steps, the Sepsis-3 comparison, counts rebuilt from a printed difference, running sums of the time bins) is compared with the reference figures the report prints and with the counts published before it; one within 10 of them is withheld with anything that would reveal it. |
 
 ## Where things run
 
@@ -59,7 +60,10 @@ caffeinate -i ./build_mimic.sh ~/physionet/raw/physionet.org/files/mimiciv/3.1 ~
 # 4. Check, from the repository
 make setup
 make mimic-check
+make m1-check
 ```
+
+[m1_runbook.md](m1_runbook.md) has the same steps with what to look for at each one, a faster download in two windows, and what may be shared.
 
 mimic-code's `download_data.sh` is not used: its `--cut-dirs=4` drops the `hosp/` and `icu/` folder level that `build_mimic.sh` expects. The plain `wget` above keeps PhysioNet's folder structure.
 

@@ -47,7 +47,9 @@ def render_markdown(report: dict, figure_directory_name: str = "figures") -> str
     add(f"- Horizon: {report['horizon_hours']:g} hours")
     add(
         f"- Cells below {report['minimum_cell_size']} are shown as `<{report['minimum_cell_size']}`; "
-        "small bins and cohort steps are merged with their neighbours instead."
+        "small bins and cohort steps are merged with their neighbours instead. In subgroup and era "
+        f"tables, `hidden` marks groups below {report['minimum_cell_size']} and the groups hidden "
+        "with them so that a small group cannot be worked out from the total."
     )
     add(
         "- Overall measures carry 95% patient-bootstrap intervals; results by decision time, "

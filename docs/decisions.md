@@ -109,3 +109,31 @@ Each entry records the choice, the alternatives, why, and what result would chan
 - **Choice:** the latest value minus the latest value taken at least 6 hours earlier, provided that one was taken within the last 24 hours; otherwise missing, with a "not measured" indicator.
 - **Alternatives:** the earlier version used a reference value of any age and wrote 0 when there was none.
 - **Why:** a 30-hour-old value says little about the recent trend, and 0 claimed "no change" when nothing was known.
+
+## 18. The sensitivity cohort changes the infection definition only (2026-10-08)
+
+- **Choice:** the `culture_antibiotic_pair` cohort uses the course prototype's infection rule (an ICU antibiotic infusion and an ICU culture within one hour; R is the later of the two in the first complete pair) and every other rule of the main cohort: adults, first ICU stay, R within 24 h of ICU admission, cardiac and thoracic surgery services excluded.
+- **Alternatives:** the prototype's cohort as it was, without only its length-of-stay filter (which would keep its 18 to 65 age limit and its infusion-end rule).
+- **Why:** a difference between the two cohorts' results should come from the infection definition alone. The infusion-end rule selects on the future like the length-of-stay filter. An upper age limit of 65 would remove roughly half of the sepsis population (about half are 65 or older in other MIMIC-IV pipelines) and every patient the 65 trial row is about.
+- **Would change if:** the M1 check shows the pair rule finds a population so different (for example in time to recognition) that the 24-hour window means something else for it.
+
+## 19. Measurements and treatments are read for cohort stays only (2026-10-08)
+
+- **Choice:** the extraction selects the cohort from the stays and recognition tables first, then reads measurements, treatments and hourly SOFA for those stays only. The stays table still holds every ICU stay, so the cohort flow is complete.
+- **Why:** on the full database the unrestricted measurement table would be several times larger than needed in memory; the cohort is expected to be roughly a fifth of ICU stays. A demo test checks that the restricted tables equal the unrestricted ones for cohort stays.
+
+## 20. The cohort flow starts from every ICU stay (2026-10-08)
+
+- **Choice:** stays without a discharge time are kept in the stays table and removed by the first cohort rule, "ICU discharge time recorded".
+- **Why:** the M1 check publishes the database's count of ICU stays next to the flow. If the flow started after dropping stays without a discharge time, the two counts could differ by a handful of stays, a small group anyone could work out.
+
+## 21. What the M1 check publishes, and how (2026-10-08)
+
+- **Choice:** one command (`sepsis-support m1-check`, `make m1-check`) writes an aggregate JSON and Markdown report: table sizes against mimic-code's expected 3.1 counts, Sepsis-3 among first ICU stays against the published count, the course funnel reproduced rule for rule, both cohorts' flows, hours from admission to recognition, the criterion completed last, the cohorts' overlap, an outcome-definition table changing one part of the definition at a time, and how often lactate and arterial pressure are measured.
+- **Disclosure control beyond the usual rules:** counts in tables of alternative definitions are rounded to the nearest 10 (two rows counting the same patients differ by a group that could be small). Every exact count of stays or patients, including the cohort-flow steps, is compared with the reference figures the report prints (mimic-code's expected counts, the prototype's funnel, the published Sepsis-3 count) and with the counts published before it; one within 10 of them is withheld together with whatever would reveal it. The time bins are not split at the 24-hour limit unless the flow publishes the count within it.
+- **Why:** the outcome definition must be fixed before registration from how the data behave, not from model performance, and these numbers are the evidence for that choice.
+
+## 22. Sepsis-3 operational shock as a sensitivity outcome (2026-10-08)
+
+- **Choice:** a vasopressor episode (intervals no more than 60 minutes apart joined) with lactate above the threshold in the same window around its start (`configs/outcomes/sepsis3_operational_shock.yaml`).
+- **Why:** it is the definition most published work uses. Reporting it next to the main outcome shows how much of the "shock" signal is the decision to start a vasopressor.

@@ -9,9 +9,13 @@ from sepsis_decision_support.privacy.aggregate_guard import (
     assert_aggregate_only,
     complementary_suppression,
     count_cell,
+    count_partition_cells,
+    merge_sparse_counts,
     merge_sparse_groups,
     publishable_flow,
     rate_cell,
+    rounded_count_cell,
+    rounded_rate_cell,
     write_aggregate_json,
 )
 
@@ -94,3 +98,36 @@ def test_cohort_flow_never_shows_a_small_exclusion():
     assert published[3]["step"] == "recognised; within 24 h; not surgical"
     exclusions = [before - after for before, after in zip(counts, counts[1:], strict=False)]
     assert all(value == 0 or value >= 11 for value in exclusions)
+
+
+def test_rounded_counts_round_halves_up_and_suppress_small_counts():
+    assert rounded_count_cell(10, 11) == "<11"
+    assert rounded_count_cell(11, 11) == 10
+    assert rounded_count_cell(15, 11) == 20
+    assert rounded_count_cell(24, 11) == 20
+    assert rounded_count_cell(1_234, 11) == 1_230
+
+
+def test_rounded_rates_reveal_only_the_rounded_counts():
+    assert rounded_rate_cell(5, 100, 11) == "<11"
+    assert rounded_rate_cell(95, 100, 11) == "<11"
+    cell = rounded_rate_cell(123, 1_004, 11)
+    assert cell == {
+        "rate": round(120 / 1_000, 3),
+        "numerator_rounded": 120,
+        "denominator_rounded": 1_000,
+    }
+
+
+def test_partition_cells_hide_a_second_group_when_one_is_small():
+    cells = count_partition_cells({"a": 500, "b": 5, "c": 40, "d": 300}, 11)
+    assert cells == {"a": 500, "b": "hidden", "c": "hidden", "d": 300}
+    # Two small groups that together still fall short: a third is hidden.
+    cells = count_partition_cells({"a": 500, "b": 3, "c": 4, "d": 30}, 11)
+    assert cells == {"a": 500, "b": "hidden", "c": "hidden", "d": "hidden"}
+    assert count_partition_cells({"a": 50, "b": 60}, 11) == {"a": 50, "b": 60}
+
+
+def test_sparse_counts_are_merged_left_to_right():
+    assert merge_sparse_counts([12, 5, 0, 20, 0], 11) == [[0], [1, 2, 3, 4]]
+    assert merge_sparse_counts([3, 4], 11) == [[0, 1]]

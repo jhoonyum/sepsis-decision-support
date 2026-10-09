@@ -1,0 +1,16 @@
+# Sensitivity cohort: the course prototype's definition of suspected infection.
+#
+# A stay enters when an IV antibiotic infusion and a culture are charted in the ICU within
+# one hour of each other; R is the moment the first such pair is complete (the later of
+# the two). Everything else (adults, first ICU stay, R within 24 hours of ICU admission,
+# cardiac and thoracic surgery services excluded) is the same as in the main cohort, so a
+# difference in results comes from the infection definition alone.
+#
+# Two rules of the prototype are not used because they select on the future: stay length
+# between 12 hours and 10 days, and the infusion ending before ICU discharge. Its age limit
+# (18 to 65) is not used either: age is the same eligibility rule in both cohorts.
+#
+# Usage: sepsis-support run --config configs/cohort/culture_antibiotic_pair.yaml ...
+cohort:
+  name: culture_antibiotic_pair
+  definition: culture_antibiotic_pair

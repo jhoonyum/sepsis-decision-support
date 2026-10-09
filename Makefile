@@ -11,10 +11,10 @@ DEMO_DIR ?= $(HOME)/physionet/mimic-iv-demo
 MIMIC_DB ?= $(HOME)/physionet/mimic4.db
 
 .DEFAULT_GOAL := help
-.PHONY: help setup lint format test guard synth demo-data demo-check mimic-check mimic screen serve check-screen
+.PHONY: help setup lint format test guard synth demo-data demo-check mimic-check m1-check mimic screen serve check-screen
 
 help: ## List the targets
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-13s %s\n", $$1, $$2}'
+	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-13s %s\n", $$1, $$2}'
 
 setup: ## Install the pinned packages and this package into the active environment
 	$(PYTHON) -m pip install -r requirements-lock.txt
@@ -39,12 +39,16 @@ synth: ## Full run on synthetic data (a few minutes); writes $(RUNS)/synthetic-d
 demo-data: ## Download the open MIMIC-IV demo and build its DuckDB file (needs the DuckDB CLI)
 	scripts/build_mimic_demo.sh $(DEMO_DIR)
 
-demo-check: ## Extract and validate the canonical tables from the demo; run the SQL tests
+demo-check: ## Extract and validate the canonical tables from the demo; run the SQL tests and the M1 check
 	sepsis-support extract-check --duckdb $(DEMO_DIR)/mimic4_demo.db
 	MIMIC_DEMO_DUCKDB=$(DEMO_DIR)/mimic4_demo.db pytest -m demo
+	sepsis-support m1-check --duckdb $(DEMO_DIR)/mimic4_demo.db --run-name m1-check-demo
 
 mimic-check: ## Same check on the full MIMIC-IV file (aggregate output only)
 	sepsis-support extract-check --duckdb $(MIMIC_DB)
+
+m1-check: ## M1 gate check on the full MIMIC-IV file; writes $(RUNS)/m1-check-<date> (aggregate only)
+	sepsis-support m1-check --duckdb $(MIMIC_DB)
 
 mimic: ## Full run on MIMIC-IV; the run folder stays in $(RUNS)
 	sepsis-support run --source mimic_duckdb --duckdb $(MIMIC_DB) --run-name mimic-$$(date +%Y%m%d)

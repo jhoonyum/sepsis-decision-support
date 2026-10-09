@@ -52,6 +52,11 @@ class RunSettings(StrictModel):
 
 class CohortSettings(StrictModel):
     name: str
+    # How infection is identified and when the stay enters the cohort (time R):
+    #   sepsis3                  Sepsis-3 from mimic-code's suspicion-of-infection and SOFA
+    #   culture_antibiotic_pair  an ICU antibiotic infusion and an ICU culture within 1 hour
+    #                            (the course prototype's definition; sensitivity cohort)
+    definition: Literal["sepsis3", "culture_antibiotic_pair"]
     minimum_age_years: float
     first_icu_stay_only: bool
     maximum_hours_from_icu_admission_to_recognition: float
@@ -80,6 +85,9 @@ class LactateSettings(StrictModel):
 
 class OutcomeSettings(StrictModel):
     horizon_hours: float
+    # physiological        sustained hypotension with high lactate, no vasopressor in the rule
+    # sepsis3_operational  a vasopressor episode with high lactate (sensitivity analysis)
+    shock_definition: Literal["physiological", "sepsis3_operational"]
     sustained_hypotension: SustainedHypotensionSettings
     lactate: LactateSettings
     mortality_days: int

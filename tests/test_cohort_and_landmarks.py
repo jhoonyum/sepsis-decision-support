@@ -30,7 +30,7 @@ def cohort_tables():
 def test_cohort_rules_and_flow(settings):
     cohort = build_cohort(cohort_tables(), settings.cohort)
     assert list(cohort.stays["stay_id"]) == [1, 7]
-    assert [count for _, count in cohort.flow] == [7, 6, 5, 4, 3, 2]
+    assert [count for _, count in cohort.flow] == [7, 7, 6, 5, 4, 3, 2]
 
 
 def test_time_zero_is_recognition_or_admission_whichever_is_later(settings):
@@ -64,3 +64,11 @@ def test_landmarks_stop_at_the_administrative_end(settings):
         landmarks["landmark_time"]
         == stays.loc[0, "time_zero"] + pd.to_timedelta(landmarks["landmark_hour"], unit="h")
     ).all()
+
+
+def test_flow_names_the_infection_definition(settings):
+    pair_settings = settings.cohort.model_copy(update={"definition": "culture_antibiotic_pair"})
+    steps = [step for step, _ in build_cohort(cohort_tables(), pair_settings).flow]
+    assert "IV antibiotic and culture within 1 h of each other in the ICU" in steps
+    steps = [step for step, _ in build_cohort(cohort_tables(), settings.cohort).flow]
+    assert "Sepsis-3 recognised during the ICU stay" in steps

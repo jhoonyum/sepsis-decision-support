@@ -23,6 +23,15 @@ Each number shown on the screen was checked against the trial's abstract or full
 - Vickers AJ, Elkin EB. Decision curve analysis: a novel method for evaluating prediction models. Med Decis Making 2006;26(6):565-574. [doi:10.1177/0272989X06295361](https://doi.org/10.1177/0272989X06295361)
 - Royal College of Physicians. National Early Warning Score (NEWS) 2. London: RCP; 2017.
 - Singer M, et al. The Third International Consensus Definitions for Sepsis and Septic Shock (Sepsis-3). JAMA 2016;315(8):801-810. [doi:10.1001/jama.2016.0287](https://doi.org/10.1001/jama.2016.0287)
+- Collins GS, et al. TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods. BMJ 2024;385:e078378. [doi:10.1136/bmj-2023-078378](https://doi.org/10.1136/bmj-2023-078378)
+- Riley RD, et al. Calculating the sample size required for developing a clinical prediction model. BMJ 2020;368:m441. [doi:10.1136/bmj.m441](https://doi.org/10.1136/bmj.m441)
+- van den Akker OR, et al. Preregistration of secondary data analysis: a template and tutorial. Meta-Psychology 2021;5.
+
+## Cohort counts used by the M1 check
+
+- Yang P, et al. Front Pharmacol 2025;16:1615618. [doi:10.3389/fphar.2025.1615618](https://doi.org/10.3389/fphar.2025.1615618): 28,087 Sepsis-3 patients among 65,366 first ICU stays in MIMIC-IV 3.0.
+- mimic-code, `mimic-iv/buildmimic/postgres/validate.sql` at commit 303d26c: expected row counts of MIMIC-IV 3.1 (patients 364,627; admissions 546,028; icustays 94,458; inputevents 10,953,713; procedureevents 808,706).
+- The course prototype's cohort funnel (94,458 / 65,366 / 58,506 / 29,421 / 1,502): the first four counts from its code, the last from its notebook, which restricted the culture to the ICU stay. The rules are restated in `src/sepsis_decision_support/data/sql/m1_course_funnel.sql`.
 
 ## Data and software
 

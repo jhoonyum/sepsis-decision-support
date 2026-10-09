@@ -11,7 +11,9 @@ Why not the usual Sepsis-3 shock definition?
         and lactate > 2         a lactate above the threshold within a window around the
                                 moment the hypotension became sustained
 
-    The Sepsis-3 operational definition is kept as a sensitivity analysis.
+    The Sepsis-3 operational definition is kept as a sensitivity analysis
+    (``outcomes.shock_definition: sepsis3_operational``): a vasopressor episode with a
+    lactate above the threshold in the same window around the episode's start.
 """
 
 from __future__ import annotations
@@ -62,18 +64,48 @@ def sustained_hypotension_times(
     return episodes.sort_values(["stay_id", "hypotension_time"]).reset_index(drop=True)
 
 
-def shock_event_times(measurements: pd.DataFrame, settings: OutcomeSettings) -> pd.DataFrame:
-    """Times at which the treatment-independent shock definition was met.
+# Vasopressor intervals separated by no more than this belong to one episode: mimic-code
+# splits an infusion into a new interval at every rate change.
+VASOPRESSOR_EPISODE_GAP_MINUTES = 60
 
-    The event time is the moment both parts are on record: the hypotension time if a
-    high lactate was already measured in the window before it, otherwise the time of
-    the first high lactate in the window after it.
+
+def vasopressor_episode_starts(treatments: pd.DataFrame) -> pd.DataFrame:
+    """Start of each vasopressor episode.
+
+    An episode is a run of vasopressor intervals in which each interval begins no more than
+    ``VASOPRESSOR_EPISODE_GAP_MINUTES`` after the previous one ended.
 
     Returns:
-        DataFrame with columns ``stay_id`` and ``shock_time``, sorted.
+        DataFrame with columns ``stay_id`` and ``episode_start``.
     """
-    hypotension = sustained_hypotension_times(measurements, settings.sustained_hypotension)
-    lactate_settings = settings.lactate
+    infusions = treatments.loc[
+        treatments["treatment"] == "vasopressor", ["stay_id", "start_time", "end_time"]
+    ].sort_values(["stay_id", "start_time"])
+    latest_end_so_far = infusions.groupby("stay_id")["end_time"].cummax()
+    previous_end = latest_end_so_far.groupby(infusions["stay_id"]).shift()
+    gap = infusions["start_time"] - previous_end
+    starts_episode = previous_end.isna() | (
+        gap > pd.Timedelta(minutes=VASOPRESSOR_EPISODE_GAP_MINUTES)
+    )
+    return (
+        infusions.loc[starts_episode, ["stay_id", "start_time"]]
+        .rename(columns={"start_time": "episode_start"})
+        .reset_index(drop=True)
+    )
+
+
+def _with_high_lactate(
+    anchors: pd.DataFrame, anchor_column: str, measurements: pd.DataFrame, lactate_settings
+) -> pd.DataFrame:
+    """Event times for anchor moments (hypotension or vasopressor start) with high lactate.
+
+    The event time is the moment both parts are on record: the anchor time if a high
+    lactate was already measured in the window before it, otherwise the time of the
+    first high lactate in the window after it.
+    """
+    empty = pd.DataFrame(
+        {"stay_id": pd.Series(dtype="int64"), "shock_time": pd.Series(dtype="datetime64[ns]")}
+    )
     high_lactate = (
         measurements.loc[
             (measurements["variable"] == "lactate")
@@ -83,36 +115,57 @@ def shock_event_times(measurements: pd.DataFrame, settings: OutcomeSettings) -> 
         .rename(columns={"charttime": "lactate_time"})
         .sort_values("lactate_time")
     )
-    if hypotension.empty or high_lactate.empty:
-        return pd.DataFrame(
-            {"stay_id": pd.Series(dtype="int64"), "shock_time": pd.Series(dtype="datetime64[ns]")}
-        )
+    if anchors.empty or high_lactate.empty:
+        return empty
 
-    hypotension = hypotension.sort_values("hypotension_time")
+    anchors = anchors[["stay_id", anchor_column]].sort_values(anchor_column)
     lactate_before = pd.merge_asof(
-        hypotension,
+        anchors,
         high_lactate,
-        left_on="hypotension_time",
+        left_on=anchor_column,
         right_on="lactate_time",
         by="stay_id",
         direction="backward",
         tolerance=pd.Timedelta(hours=lactate_settings.window_hours_before),
     )
     lactate_after = pd.merge_asof(
-        hypotension,
+        anchors,
         high_lactate,
-        left_on="hypotension_time",
+        left_on=anchor_column,
         right_on="lactate_time",
         by="stay_id",
         direction="forward",
         tolerance=pd.Timedelta(hours=lactate_settings.window_hours_after),
     )
-    shock_time = lactate_before["hypotension_time"].where(
+    shock_time = lactate_before[anchor_column].where(
         lactate_before["lactate_time"].notna(), lactate_after["lactate_time"]
     )
     events = pd.DataFrame(
-        {"stay_id": hypotension["stay_id"].to_numpy(), "shock_time": shock_time.to_numpy()}
+        {"stay_id": anchors["stay_id"].to_numpy(), "shock_time": shock_time.to_numpy()}
     )
     events = events.dropna(subset=["shock_time"]).drop_duplicates()
     events["shock_time"] = events["shock_time"].astype("datetime64[ns]")
     return events.sort_values(["stay_id", "shock_time"]).reset_index(drop=True)
+
+
+def shock_event_times(
+    measurements: pd.DataFrame,
+    settings: OutcomeSettings,
+    treatments: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """Times at which the configured shock definition was met.
+
+    ``physiological`` (main analysis): sustained hypotension with a high lactate in the
+    window around it. ``sepsis3_operational`` (sensitivity analysis): a vasopressor episode
+    start with a high lactate in the same window; needs ``treatments``.
+
+    Returns:
+        DataFrame with columns ``stay_id`` and ``shock_time``, sorted.
+    """
+    if settings.shock_definition == "physiological":
+        anchors = sustained_hypotension_times(measurements, settings.sustained_hypotension)
+        return _with_high_lactate(anchors, "hypotension_time", measurements, settings.lactate)
+    if treatments is None:
+        raise ValueError("the sepsis3_operational shock definition needs the treatments table")
+    anchors = vasopressor_episode_starts(treatments)
+    return _with_high_lactate(anchors, "episode_start", measurements, settings.lactate)

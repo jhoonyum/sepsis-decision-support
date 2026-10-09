@@ -18,6 +18,9 @@ runs:
 
 cohort:
   name: sepsis3_early
+  # "sepsis3" (main analysis) or "culture_antibiotic_pair" (sensitivity cohort, see
+  # configs/cohort/culture_antibiotic_pair.yaml). Every other rule below applies to both.
+  definition: sepsis3
   minimum_age_years: 18
   first_icu_stay_only: true
   # Sepsis must be recognised within this many hours of ICU admission (cohort "F-prime").
@@ -39,6 +42,10 @@ landmarks:
 
 outcomes:
   horizon_hours: 24
+  # "physiological" (main analysis): sustained hypotension with lactate above the threshold.
+  # "sepsis3_operational" (sensitivity analysis): a vasopressor episode with lactate above
+  # the threshold; see configs/outcomes/sepsis3_operational_shock.yaml.
+  shock_definition: physiological
   sustained_hypotension:
     map_threshold_mmhg: 65
     minimum_duration_minutes: 30

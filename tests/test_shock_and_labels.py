@@ -120,3 +120,41 @@ def test_shock_after_leaving_the_icu_is_not_an_event(settings):
     measurements = blood_pressure(1, (6, 60), (7, 60)) + lactate(1, 6.5, 3.0)
     rows = labelled(settings, [stay], measurements, landmark_hours=(0,))
     assert not rows.loc[(1, 0.0), "event_within_horizon"]
+
+
+def test_vasopressor_episodes_join_intervals_split_by_rate_changes():
+    from sepsis_decision_support.outcomes.shock_events import vasopressor_episode_starts
+
+    tables = make_tables(
+        [stay_row(1)],
+        treatments=[
+            (1, "vasopressor", 2.0, 3.0, 0.05),
+            (1, "vasopressor", 3.0, 5.0, 0.10),  # rate change: same episode
+            (1, "vasopressor", 5.5, 6.0, 0.10),  # 30 minutes off: same episode
+            (1, "vasopressor", 8.0, 9.0, 0.10),  # 2 hours off: new episode
+            (1, "norepinephrine", 20.0, 21.0, 0.10),  # counted through "vasopressor" only
+        ],
+    )
+    starts = vasopressor_episode_starts(tables.treatments)
+    assert list(starts["episode_start"]) == [hours(2.0), hours(8.0)]
+
+
+def test_operational_shock_is_a_vasopressor_start_with_high_lactate(settings):
+    operational = settings.outcomes.model_copy(update={"shock_definition": "sepsis3_operational"})
+    measurements = (
+        lactate(1, 1.0, 3.0)  # before the start: shock at the start
+        + lactate(2, 9.0, 2.5)  # 5 h after the start: shock at the lactate time
+        + lactate(3, 20.0, 4.0)  # 16 h after the start: outside the window
+        + lactate(4, 4.0, 1.5)  # normal lactate
+    )
+    treatments = [(stay, "vasopressor", 4.0, 10.0, 0.1) for stay in (1, 2, 3, 4)]
+    tables = make_tables(
+        [stay_row(stay) for stay in (1, 2, 3, 4)],
+        measurements=measurements,
+        treatments=treatments,
+    )
+    events = shock_event_times(tables.measurements, operational, tables.treatments)
+    found = dict(zip(events["stay_id"], events["shock_time"], strict=True))
+    assert found == {1: hours(4.0), 2: hours(9.0)}
+    # The main definition ignores vasopressors altogether.
+    assert shock_event_times(tables.measurements, settings.outcomes, tables.treatments).empty
