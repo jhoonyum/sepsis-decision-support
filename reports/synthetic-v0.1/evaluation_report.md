@@ -1,9 +1,9 @@
 # Evaluation report
 
 - Data: synthetic patients (no real data)
-- Settings fingerprint: `09411fedf673`
+- Settings fingerprint: `78b4f1dcc63e`
 - Horizon: 24 hours
-- Cells below 11 are shown as `<11`; small bins and cohort steps are merged with their neighbours instead.
+- Cells below 11 are shown as `<11`; small bins and cohort steps are merged with their neighbours instead. In subgroup and era tables, `hidden` marks groups below 11 and the groups hidden with them so that a small group cannot be worked out from the total.
 - Overall measures carry 95% patient-bootstrap intervals; results by decision time, subgroup and era are point estimates.
 
 ## Cohort
@@ -11,6 +11,7 @@
 | Step | ICU stays remaining |
 |---|---|
 | ICU stays | 2,000 |
+| ICU discharge time recorded | 2,000 |
 | age >= 18 | 2,000 |
 | first ICU stay of the patient | 1,729 |
 | Sepsis-3 recognised during the ICU stay | 1,326 |

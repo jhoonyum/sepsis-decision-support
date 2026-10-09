@@ -1,12 +1,16 @@
 {
   "schema_version": 1,
   "data_source": "synthetic",
-  "settings_fingerprint": "09411fedf673",
+  "settings_fingerprint": "78b4f1dcc63e",
   "horizon_hours": 24.0,
   "minimum_cell_size": 11,
   "cohort_flow": [
     {
       "step": "ICU stays",
+      "stays": 2000
+    },
+    {
+      "step": "ICU discharge time recorded",
       "stays": 2000
     },
     {
@@ -14160,8 +14164,8 @@
       ]
     }
   },
-  "code_revision": "053e444",
-  "created_utc": "2026-10-08T22:19:30+00:00",
+  "code_revision": "7f4c433",
+  "created_utc": "2026-10-09T00:38:35+00:00",
   "python": "3.12.3",
   "package_versions": {
     "duckdb": "1.5.6",
