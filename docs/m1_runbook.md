@@ -106,6 +106,6 @@ Never share anything else from `~/physionet` or `~/sepsis_runs`, in particular `
 
 ## 7. After M1
 
-1. Fill in the [M1] values and the [decide] items in [analysis_plan.md](analysis_plan.md), commit, and register the plan on OSF (the registration freezes that commit's text).
+1. Fill in the [M1] values in [analysis_plan.md](analysis_plan.md) by the principles in its section 4, commit, and register the plan on OSF (the registration freezes that commit's text).
 2. Add the OSF link to the README and the model card.
 3. Then run `make mimic` for v0.2.

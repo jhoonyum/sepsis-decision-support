@@ -32,7 +32,7 @@ Each entry records the choice, the alternatives, why, and what result would chan
 
 ## 5. Penalised logistic regression first, Bayesian continuous-time HMM second (2026-10-07)
 
-- **Choice:** D1, one penalised logistic regression per stage and per number on stacked decision times. B1, a continuous-time HMM, is compared with D1 under a rule written before the comparison: B1 becomes the engine if its Brier score is no more than 0.005 worse than D1's and it meets the calibration criteria.
+- **Choice:** D1, one penalised logistic regression per stage and per number on stacked decision times. B1, a continuous-time HMM, is compared with D1 under a rule written before the comparison: B1 becomes the engine if its Brier score is no more than 0.005 worse than D1's and it meets the calibration criteria (decision 23).
 - **Alternatives:** gradient boosting; B1 alone.
 - **Why:** D1 is fast, calibrates well, and its predictions split exactly into per-input contributions for the "what moves this risk" panel. B1 adds a model of how patients move between stages but costs hours per fit.
 - **Would change if:** B1 meets the rule (then B1 drives the screen), or its evaluation is not finished in time for v1.0 (then B1 is released after v1.0).
@@ -137,3 +137,12 @@ Each entry records the choice, the alternatives, why, and what result would chan
 
 - **Choice:** a vasopressor episode (intervals no more than 60 minutes apart joined) with lactate above the threshold in the same window around its start (`configs/outcomes/sepsis3_operational_shock.yaml`).
 - **Why:** it is the definition most published work uses. Reporting it next to the main outcome shows how much of the "shock" signal is the decision to start a vasopressor.
+
+## 23. The open choices in the analysis plan (2026-10-08)
+
+- **Choice:**
+  - The outcome's thresholds and windows are fixed from the M1 check by three principles, in this order: keep the Sepsis-3 thresholds (MAP 65 mmHg, lactate 2 mmol/L); choose the duration and gap rules at which the event rate is stable against neighbouring values; use the combined arterial and cuff pressure series unless the arterial-only series changes the shock rate at time zero by a fifth or more, in which case the arterial-only definition becomes a further sensitivity analysis.
+  - B1 replaces D1 as the screen's engine only if, on the temporal hold-out, its Brier score is no more than 0.005 worse, its calibration slope is between 0.8 and 1.25, and its integrated calibration index is no more than 1.5 times D1's.
+- **Alternatives:** choose the outcome values by how well a model predicts them; compare B1 and D1 on discrimination alone.
+- **Why:** choosing a definition by model performance would make the reported performance optimistic. The thresholds come from the Sepsis-3 consensus, so they change only if the data cannot support them; the other values are chosen where the outcome does not hinge on the charting interval. The slope range is the one the screen already uses to flag poor calibration, and the ICI margin keeps B1 from winning on Brier score while being visibly worse calibrated.
+- **Would change if:** never after registration without a dated entry under "Deviations" in the analysis plan.

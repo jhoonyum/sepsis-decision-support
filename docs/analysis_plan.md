@@ -1,6 +1,6 @@
 # Analysis plan (draft for OSF registration)
 
-**Status:** draft, not yet registered. It is registered on OSF after the M1 check and before any model is fitted on MIMIC-IV or the temporal hold-out is evaluated. Items marked **[M1]** are fixed from the M1 check's aggregate counts (outcome frequencies and measurement availability, never model performance); items marked **[decide]** are choices still open. The registered version replaces this draft, and any later change is listed under "Deviations" with its reason and date.
+**Status:** draft, not yet registered. It is registered on OSF after the M1 check and before any model is fitted on MIMIC-IV or the temporal hold-out is evaluated. Items marked **[M1]** are fixed from the M1 check's aggregate counts (outcome frequencies and measurement availability, never model performance). The three choices left open in the first draft (the order of the principles in section 4, what counts as a material difference for the arterial-line series, and the calibration criteria in section 8) were confirmed on 2026-10-08. The registered version replaces this draft, and any later change is listed under "Deviations" with its reason and date.
 
 Structure: OSF's template for secondary data analysis (van den Akker et al. 2021), with the TRIPOD+AI items for prediction-model development (Collins et al. 2024).
 
@@ -34,11 +34,11 @@ There are no hypothesis tests. Every result is an estimate with an interval.
 | Secondary | The same events within the next hour, and within 24 h starting 1 h later; death within 28 days | fixed |
 | Sensitivity | Sepsis-3 operational shock: a vasopressor episode (intervals no more than 60 min apart joined) with lactate above 2 mmol/L in the same window around its start | fixed |
 
-**How M1 fixes the bold values.** The M1 check reports, for the main cohort, how often the outcome occurs at time zero and across decision times when each value is changed on its own, how often lactate is measured around time zero and around the first sustained hypotension, and how much of the pressure record comes from an arterial line. The values are fixed by these principles, in this order **[decide: confirm the order]**:
+**How M1 fixes the bold values.** The M1 check reports, for the main cohort, how often the outcome occurs at time zero and across decision times when each value is changed on its own, how often lactate is measured around time zero and around the first sustained hypotension, and how much of the pressure record comes from an arterial line. The values are fixed by these principles, in this order (confirmed 2026-10-08):
 
 1. Keep the Sepsis-3 thresholds (MAP 65 mmHg, lactate 2 mmol/L) unless lactate is measured so rarely around hypotension that the outcome mostly reflects whether lactate was drawn; then report that as a limitation rather than change the threshold.
 2. Choose the duration and gap rules for which the event rate is stable against neighbouring values, so that the outcome does not hinge on the charting interval.
-3. Use the combined MAP series unless the arterial-only series changes the event rate materially (**[decide]**: by more than a fifth); then the arterial-only definition becomes a further sensitivity analysis.
+3. Use the combined MAP series unless the arterial-only series changes the shock rate materially: shock within 24 h among patients who are pre-shock at time zero, changed by a fifth or more of its value under the combined series, in either direction. Then the arterial-only definition becomes a further sensitivity analysis.
 
 ## 5. Predictors
 
@@ -59,14 +59,14 @@ The number of patients and events is fixed by the cohort. After M1, the expected
 - **Temporal validation.** Stays from the era 2020 to 2022 (estimated real years) are held out from fitting and evaluated once, after registration.
 - **Measures.** AUROC, AUPRC, Brier score, calibration intercept and slope, integrated calibration index, each with 95% patient-bootstrap intervals (200 replicates); calibration tables by tenth of predicted risk and by fixed risk band; decision curves; alert burden by threshold (alerts per 100 patient-days, positive predictive value, events caught, alerts per detected event, lead time); results by decision time, sex, age band, race and ethnicity group, first care unit and era.
 - **Comparators.** SOFA and NEWS2, each recalibrated by logistic regression on the same folds.
-- **B1 against D1 (v0.3).** B1 becomes the screen's engine if, on the temporal hold-out, its Brier score is at most 0.005 worse than D1's (point estimate; the interval is reported) and its calibration slope lies between **0.8 and 1.25** with an integrated calibration index no more than **1.5 times** D1's **[decide: these two calibration criteria]**. Otherwise D1 remains the engine and B1 is reported as an explanatory model.
+- **B1 against D1 (v0.3).** B1 becomes the screen's engine if, on the temporal hold-out, its Brier score is at most 0.005 worse than D1's (point estimate; the interval is reported) and its calibration slope lies between **0.8 and 1.25** with an integrated calibration index no more than **1.5 times** D1's (criteria confirmed 2026-10-08). Otherwise D1 remains the engine and B1 is reported as an explanatory model.
 - **Small cells.** Every published table follows docs/data_governance.md: no count below 11, no rate whose count or complement is below 11, merged bins and flow steps, rounded counts for tables of alternative definitions.
 
 ## 9. Sensitivity analyses
 
 1. The sensitivity cohort (`configs/cohort/culture_antibiotic_pair.yaml`).
 2. The Sepsis-3 operational shock outcome (`configs/outcomes/sepsis3_operational_shock.yaml`).
-3. The arterial-only MAP definition, if M1 shows the series differ materially (section 4).
+3. The arterial-only MAP definition, if M1 shows the series differ materially (section 4, principle 3).
 
 Each is a full re-run with one setting file changed, reported next to the main analysis.
 
